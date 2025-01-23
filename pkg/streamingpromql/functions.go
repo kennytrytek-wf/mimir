@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/promql/parser/posrange"
 	"github.com/prometheus/prometheus/util/annotations"
 
@@ -74,6 +75,24 @@ func InstantVectorTransformationFunctionOperatorFactory(name string, seriesDataF
 	}
 
 	return SingleInputVectorFunctionOperatorFactory(name, f)
+}
+
+func AbsentFunctionOperatorFactory(name string, innerExpr parser.Expr) InstantVectorFunctionOperatorFactory {
+	return func(args []types.Operator, memoryConsumptionTracker *limiting.MemoryConsumptionTracker, _ *annotations.Annotations, expressionPosition posrange.PositionRange, timeRange types.QueryTimeRange) (types.InstantVectorOperator, error) {
+		if len(args) != 1 {
+			// Should be caught by the PromQL parser, but we check here for safety.
+			return nil, fmt.Errorf("expected exactly 1 argument for %s, got %v", name, len(args))
+		}
+		inner, ok := args[0].(types.InstantVectorOperator)
+		if !ok {
+			// Should be caught by the PromQL parser, but we check here for safety.
+			return nil, fmt.Errorf("expected an instant vector argument for %s, got %T", name, args[0])
+		}
+
+		var o types.InstantVectorOperator = operators.NewAbsent(inner, innerExpr, timeRange, expressionPosition, memoryConsumptionTracker)
+
+		return o, nil
+	}
 }
 
 // InstantVectorLabelManipulationFunctionOperatorFactory creates an InstantVectorFunctionOperator for functions
@@ -338,6 +357,7 @@ func HistogramFractionFunctionOperatorFactory(args []types.Operator, memoryConsu
 var instantVectorFunctionOperatorFactories = map[string]InstantVectorFunctionOperatorFactory{
 	// Please keep this list sorted alphabetically.
 	"abs":                InstantVectorTransformationFunctionOperatorFactory("abs", functions.Abs),
+	"absent":             AbsentFunctionOperatorFactory("absent", nil),
 	"acos":               InstantVectorTransformationFunctionOperatorFactory("acos", functions.Acos),
 	"acosh":              InstantVectorTransformationFunctionOperatorFactory("acosh", functions.Acosh),
 	"asin":               InstantVectorTransformationFunctionOperatorFactory("asin", functions.Asin),
