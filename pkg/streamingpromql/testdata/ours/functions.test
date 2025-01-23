@@ -682,3 +682,12 @@ eval range from 0 to 7m step 1m last_over_time(some_metric_count[3m])
   some_metric_count{env="prod", cluster="eu"} _ _ _ 0 1 2 3 4
   some_metric_count{env="prod", cluster="us"} _ _ _ 0 2 4 6 8
   some_metric_count{env="prod", cluster="au"} _ _ _ {{count:5}} {{count:10}} {{count:15}} {{count:20}} {{count:25}}
+
+clear
+
+load 30s
+  prediction_time 5 10 15 20 25
+  metric 3 20 4 7 80
+
+eval range from 0 to 2m step 1m predict_linear(metric[1m1s], scalar(prediction_time))
+  {} _ 9.75 100
